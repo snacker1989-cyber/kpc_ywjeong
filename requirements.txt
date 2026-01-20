@@ -1,4 +1,5 @@
 langchain
+langchain-core
 langchain_community
 langchain-ollama
 langchain-chroma
