@@ -19,11 +19,12 @@ VSTORE_DIR = "vectorstore"
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=20)
     return splitter.split_documents(docs)
 
 def get_embeddings():
-    emb = OllamaEmbeddings(model="embeddinggemma")
+    #emb = OllamaEmbeddings(model="embeddinggemma")
+    emb = OllamaEmbeddings(model="qwen3-embedding")
     return emb
 
 def build_vectorstore(batch_size: int = 100):
@@ -114,27 +115,6 @@ messages_with_questions = [
 
 prompt = ChatPromptTemplate.from_messages(messages_with_questions)
 
-"""
-def query_loop(question: str):
-    embeddings = get_embeddings()
-    db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
-    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-
-    llm = ChatOllama(model="gemma3", temperature=0.7)
-    # qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
-    qa_chain = (
-        {
-            "context": retriever | get_retrieved_texts,
-            "question": RunnablePassthrough(),
-        }
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    answer = qa_chain.invoke(question)
-    print("Answer:", answer["result"])
-"""
 
 def query_loop():
     embeddings = get_embeddings()
@@ -173,12 +153,6 @@ if __name__ == "__main__":
     elif cmd == "reset":
         reset_vectorstore()
     elif cmd == "query":
-        """
-        if len(sys.argv) < 3:
-            print("Provide a question: python RAG_practice.py query \"질문\"")
-            sys.exit(1)
-        query_loop(sys.argv[2])
-        """
         query_loop()
     else:
         print("Unknown command:", cmd)
