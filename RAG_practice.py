@@ -19,15 +19,16 @@ VSTORE_DIR = "vectorstore"
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=20)
+    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150,
+                                               separators=["\n제", "\n\n", "\n", " ", ""])
     return splitter.split_documents(docs)
 
 def get_embeddings():
-    #emb = OllamaEmbeddings(model="embeddinggemma")
-    emb = OllamaEmbeddings(model="qwen3-embedding")
+    emb = OllamaEmbeddings(model="embeddinggemma")
+    #emb = OllamaEmbeddings(model="qwen3-embedding")
     return emb
 
-def build_vectorstore(batch_size: int = 100):
+def build_vectorstore(batch_size: int = 30):
     embeddings = get_embeddings()
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
 

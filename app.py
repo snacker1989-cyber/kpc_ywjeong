@@ -14,7 +14,7 @@ st.set_page_config(page_title="KPC 사규 어시스턴트", page_icon="🏢", la
 # --- 캐시를 이용한 리소스 초기화 ---
 @st.cache_resource
 def get_retriever():
-    embeddings = OllamaEmbeddings(model="qwen3-embedding")
+    embeddings = OllamaEmbeddings(model="embeddinggemma")
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
     return db
 
@@ -23,7 +23,7 @@ def get_qa_chain():
     db = get_retriever()
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
     # 스트리밍 지원을 위해 llm 설정
-    llm = ChatOllama(model="gemma3", temperature=0.7)
+    llm = ChatOllama(model="gemma3", temperature=0.2, num_predict=256)
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "당신은 한국생산성본부의 사규, 규정 등을 숙지한 AI 어시스턴트입니다. "
@@ -79,7 +79,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # 질문 입력 및 처리
-if prompt := st.chat_input("궁금한 규정을 입력하세요 (예: 연차 휴가 규정 알려줘)"):
+if prompt := st.chat_input("궁금한 규정을 입력하세요 (예: 연차휴가 규정 알려줘)"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
