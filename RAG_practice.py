@@ -121,7 +121,7 @@ def query_loop():
     embeddings = get_embeddings()
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-    llm = ChatOllama(model="gemma3", temperature=0.7)
+    llm = ChatOllama(model="gemma3", temperature=0.2)
     qa_chain = (
         {
             "context": retriever,

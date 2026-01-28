@@ -9,7 +9,7 @@ from langchain_chroma import Chroma
 # --- 설정 및 경로 ---
 VSTORE_DIR = "vectorstore"
 
-st.set_page_config(page_title="KPC 사규 어시스턴트", page_icon="🏢", layout="wide")
+st.set_page_config(page_title="한국생산성본부 내부규정 도우미", page_icon="🏢", layout="wide")
 
 # --- 캐시를 이용한 리소스 초기화 ---
 @st.cache_resource
@@ -67,8 +67,8 @@ with st.sidebar:
         st.rerun()
 
 # --- 메인 화면 구성 ---
-st.title("🏢 KPC 내부지침 챗봇")
-st.caption("한국생산성본부 임직원을 위한 규정 안내 서비스입니다.")
+st.title("🏢 한국생산성본부 내부규정 도우미")
+st.caption("한국생산성본부 임직원을 위한 규정 안내 챗봇입니다.")
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -79,7 +79,7 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # 질문 입력 및 처리
-if prompt := st.chat_input("궁금한 규정을 입력하세요 (예: 연차휴가 규정 알려줘)"):
+if prompt := st.chat_input("내부규정에 대하여 궁금하신 내용을 입력하세요 (예: 쓸 수 있는 휴가들의 종류를 알려줘)"):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
@@ -88,7 +88,7 @@ if prompt := st.chat_input("궁금한 규정을 입력하세요 (예: 연차휴�
         container = st.empty() # 스트리밍 출력을 위한 빈 공간
         full_response = ""
         
-        with st.spinner("규정집을 확인하는 중..."):
+        with st.spinner("이런저런 규정들을 살펴보는 중..."):
             qa_chain = get_qa_chain()
             # stream 메소드를 사용하여 한 글자씩 출력
             for chunk in qa_chain.stream(prompt):
