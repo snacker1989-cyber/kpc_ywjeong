@@ -21,6 +21,7 @@ def load_and_split(pdf_path):
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150,
                                                separators=["\n제", "\n\n", "\n", " ", ""])
     return splitter.split_documents(docs)
+    ######### 어떻게 split되고 있는지 체크해보자
 
 def get_embeddings():
     emb = OllamaEmbeddings(model="embeddinggemma")
@@ -34,7 +35,7 @@ def build_vectorstore(batch_size: int = 30):
     total_indexed = 0
     pdfs = list(Path(DOCS_DIR).glob("*.pdf"))
     ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리
-    ####### 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로
+    ####### 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로 (gemini한테 물어봐야하나...)
 
     if not pdfs:
         print("No PDF files found in:", DOCS_DIR)
@@ -79,6 +80,7 @@ def check_vectorstore_contents() -> None:       # 벡터 저장소에 저장된 
         if source not in sources:
             sources[source] = 0
         sources[source] += 1
+    ######## 메타데이터에서 source 정보 추출하는 부분 로그 확인, 필요 시 개선
     
     print("\n=== Vectorstore Contents ===")
     print(f"Total embedded chunks: {len(all_docs['documents'])}")
