@@ -22,8 +22,9 @@ def get_retriever():
 def get_qa_chain():
     db = get_retriever()
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
+    ########## similarity 말고 mmr도 시도해보기
     # 스트리밍 지원을 위해 llm 설정
-    llm = ChatOllama(model="gemma3", temperature=0.2, num_predict=256)
+    llm = ChatOllama(model="gemma3:1b", temperature=0.2, num_predict=256)
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "당신은 한국생산성본부의 사규, 규정 등을 숙지한 AI 어시스턴트입니다. "

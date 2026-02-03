@@ -10,7 +10,6 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_chroma import Chroma
-# from langchain_classic.chains import RetrievalQA
 
 DOCS_DIR = "pdfs"
 VSTORE_DIR = "vectorstore"
@@ -34,6 +33,8 @@ def build_vectorstore(batch_size: int = 30):
 
     total_indexed = 0
     pdfs = list(Path(DOCS_DIR).glob("*.pdf"))
+    ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리
+    ####### 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로
 
     if not pdfs:
         print("No PDF files found in:", DOCS_DIR)
