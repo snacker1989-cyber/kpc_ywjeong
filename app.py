@@ -1,31 +1,29 @@
 import streamlit as st
+
 from pathlib import Path
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_ollama import OllamaEmbeddings, ChatOllama
+from langchain_ollama import ChatOllama
 from langchain_chroma import Chroma
-
-# --- 설정 및 경로 ---
-VSTORE_DIR = "vectorstore"
+from RAGbuilder import get_embeddings, VSTORE_DIR
 
 st.set_page_config(page_title="한국생산성본부 내부규정 도우미", page_icon="🏢", layout="wide")
 
 # --- 캐시를 이용한 리소스 초기화 ---
 @st.cache_resource
 def get_retriever():
-    embeddings = OllamaEmbeddings(model="embeddinggemma")
-    #embeddings = OllamaEmbeddings(model="qwen3-embedding")
+    embeddings = get_embeddings()
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
     return db
 
 @st.cache_resource
 def get_qa_chain():
     db = get_retriever()
-    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-    ########## similarity 말고 mmr도 시도해보기
+    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})   # vs. search_type="mmr"
+    
     # 스트리밍 지원을 위해 llm 설정
-    llm = ChatOllama(model="gemma3", temperature=0.2, num_predict=256)
+    llm = ChatOllama(model="gemma3", temperature=0.2, num_predict=256)      # vs. llama3.1
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "당신은 한국생산성본부의 사규, 규정, 규칙, 가이드라인 등 내부 지침을 숙지한 AI 어시스턴트입니다. "

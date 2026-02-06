@@ -1,4 +1,3 @@
-import os
 import sys
 
 from pathlib import Path
@@ -16,11 +15,10 @@ def load_and_split(pdf_path):
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150,
                                                separators=["조(", "\n제", "\n\n", "\n", " ", ""])
     return splitter.split_documents(docs)
-    ######### 어떻게 split되고 있는지 체크해보자
+    ######### 어떻게 split되고 있는지 체크해보자 → test.ipynb 참고
 
 def get_embeddings():
-    #emb = OllamaEmbeddings(model="embeddinggemma")
-    emb = OllamaEmbeddings(model="qwen3-embedding")
+    emb = OllamaEmbeddings(model="embeddinggemma")   # vs. "qwen3-embedding"
     return emb
 
 def build_vectorstore(batch_size: int = 30):
