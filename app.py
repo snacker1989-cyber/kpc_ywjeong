@@ -24,13 +24,13 @@ def get_qa_chain():
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
     ########## similarity 말고 mmr도 시도해보기
     # 스트리밍 지원을 위해 llm 설정
-    llm = ChatOllama(model="gemma3:1b", temperature=0.2, num_predict=256)
+    llm = ChatOllama(model="gemma3", temperature=0.2, num_predict=256)
     
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "당신은 한국생산성본부의 사규, 규정 등을 숙지한 AI 어시스턴트입니다. "
-                   "{context}를 토대로 답변하고, 근거가 되는 조항(예: 인사규정 제1조제2항)을 반드시 밝혀주세요. "
-                   "모르는 내용은 지어내지 마세요."),
-        ("human", "{question}")
+        ("system", "당신은 한국생산성본부의 사규, 규정, 규칙, 가이드라인 등 내부 지침을 숙지한 AI 어시스턴트입니다. "
+                   " {context}를 토대로 답변하고, 답변에 참고가 된 내용이 무엇인지 근거가 되는 조항(예: 인사규정 제1조제2항)을 반드시 밝혀주세요. "
+                   " 답변에 근거가 없거나 그 결과물이 확실하지 않다면, 없는 내용을 지어내는 것보다 모른다고 답하는 것이 더 낫습니다."),
+        ("human", "다음 질문에 대하여 한국어로 답변해주세요. {question}")
     ])
     
     chain = (

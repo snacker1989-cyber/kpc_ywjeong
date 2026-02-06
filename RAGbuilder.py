@@ -2,24 +2,19 @@ import os
 import sys
 
 from pathlib import Path
-from typing import List
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.output_parsers import StrOutputParser
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings, ChatOllama
+from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 
-DOCS_DIR = "pdfs"
+DOCS_DIR = "data"
 VSTORE_DIR = "vectorstore"
-
 
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     docs = loader.load()
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150,
-                                               separators=["\n제", "\n\n", "\n", " ", ""])
+                                               separators=["조(", "\n제", "\n\n", "\n", " ", ""])
     return splitter.split_documents(docs)
     ######### 어떻게 split되고 있는지 체크해보자
 
@@ -106,47 +101,9 @@ def reset_vectorstore() -> None:    # 벡터 저장소 초기화
         print(f"✗ Vectorstore reset failed: {e}")
 
 
-
-messages_with_questions = [
-    (
-        "system",
-        "당신은 한국생산성본부의 사규, 규정, 규칙, 가이드라인 등 내부 지침을 숙지한 AI 어시스턴트입니다."
-        " {context}를 토대로 답변하고, 답변에 참고가 된 내용이 무엇인지 출처를 반드시 밝혀주세요."
-        " 답변에 근거가 없거나 그 결과물이 확실하지 않다면 없는 내용을 지어내는 것보다 모른다고 답하는 것이 더 낫습니다."
-    ),
-    ("human", "다음 질문에 대하여 한국어로 답변해주세요. {question}")
-]
-
-prompt = ChatPromptTemplate.from_messages(messages_with_questions)
-
-
-def query_loop():
-    embeddings = get_embeddings()
-    db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
-    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
-    llm = ChatOllama(model="gemma3", temperature=0.2)
-    qa_chain = (
-        {
-            "context": retriever,
-            "question": RunnablePassthrough(),
-        }
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-
-    while True:
-        question = input("질문을 입력해주세요 (종료를 원하시면 'q'를 입력하세요.): ")
-        if question == 'q':
-            sys.exit(1)
-            break
-        else:
-            result = qa_chain.invoke(question)
-            print(result)
-
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python RAG_practice.py [build | check | reset | query]")
+        print("Usage: python RAGbuilder.py [build | check | reset]")
         sys.exit(1)
     cmd = sys.argv[1]
 
@@ -156,7 +113,5 @@ if __name__ == "__main__":
         check_vectorstore_contents()
     elif cmd == "reset":
         reset_vectorstore()
-    elif cmd == "query":
-        query_loop()
     else:
         print("Unknown command:", cmd)
