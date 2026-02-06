@@ -19,8 +19,8 @@ def load_and_split(pdf_path):
     ######### 어떻게 split되고 있는지 체크해보자
 
 def get_embeddings():
-    emb = OllamaEmbeddings(model="embeddinggemma")
-    #emb = OllamaEmbeddings(model="qwen3-embedding")
+    #emb = OllamaEmbeddings(model="embeddinggemma")
+    emb = OllamaEmbeddings(model="qwen3-embedding")
     return emb
 
 def build_vectorstore(batch_size: int = 30):

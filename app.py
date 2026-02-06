@@ -15,6 +15,7 @@ st.set_page_config(page_title="한국생산성본부 내부규정 도우미", pa
 @st.cache_resource
 def get_retriever():
     embeddings = OllamaEmbeddings(model="embeddinggemma")
+    #embeddings = OllamaEmbeddings(model="qwen3-embedding")
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
     return db
 
