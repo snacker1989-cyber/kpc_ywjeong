@@ -11,8 +11,8 @@
 1. Ollama 설치: https://ollama.ai (설치 후 데몬/서비스 필요 시 가동)
 2. 모델 가져오기:
      ```bash
-     ollama pull gemma3
-     ollama pull embeddinggemma
+     ollama pull gemma3 (or llama3.1)
+     ollama pull embeddinggemma (or qwen3-embedding)
      ```
 
 2. 파이썬 패키지 설치
@@ -23,17 +23,17 @@
    ```
 
 ## 사용 방법
-1. `pdfs/` 폴더에 학습시킬 자료를 `.pdf` 형태의 파일로 넣으세요.
+1. `data/` 폴더에 학습시킬 자료를 `.pdf` 형태의 파일로 넣으세요.
 2. 최초 사용 전, 벡터 저장소를 리셋하고 다시 파일을 불러옵니다.
    ```bash
-   python RAG_practice.py reset
-   python RAG_practice.py build
+   python RAGbuilder.py reset
+   python RAGbuilder.py build
    ```
 3. 학습된 문서의 리스트는 `check`로 확인할 수 있습니다.
    ```bash
-   python RAG_practice.py check
+   python RAGbuilder.py check
    ```
-4. 질의를 위해 `query`로 챗봇을 시작해주세요.
+4. 질의를 위해 streamlit으로 챗봇을 시작해주세요.
    ```bash
-   python RAG_practice.py query
+   streamlit run app.py
    ```
