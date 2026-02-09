@@ -1,13 +1,14 @@
 import sys
 
 from pathlib import Path
-from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyMuPDFLoader, TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 
 DOCS_DIR = "data"
 VSTORE_DIR = "vectorstore"
+
 
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
@@ -16,9 +17,35 @@ def load_and_split(pdf_path):
                                                separators=["\n\n", "\n", " ", ""])
     # "제d조(" 등 조항의 시작 부분을 정규식을 패턴으로 만들어 구분자로 추가 고려 (법률/조항 특화된 splitter가 있나)
     # 아스키 코드로도 들어갈 수 있나? 확인 필요
-    # 도클링? pdf를 md로 변환하는 녀석 - md or json 등 여러가지 검토 - 너무 성능이 안좋을때만 고려해봐라
-    # 아예 로더 자체를 docling으로 바꿔보고, 정 안되면 노가다...
     return splitter.split_documents(docs)
+
+# loader를 PyMuPDFLoader에서 docling으로 바꾸니 HTTPSConnectionPool 에러가 발생함 - 내부망이라 생기는 문제라고 함
+# Gemini는 TextLoader로 불러와서 MarkdownHeaderTextSplitter로 청킹하는 방식을 추천함
+
+def load_and_split_md(file_path):
+    loader = TextLoader(file_path, encoding='utf-8')
+    data = loader.load()
+    content = data[0].page_content      # Markdown 파일의 내용을 text 그대로 추출
+
+    headers_to_split_on = [         # Markdown Header 기준으로 청킹
+        ("#", "Header 1"),
+        ("##", "Header 2"),
+        ("###", "Header 3"),
+    ]
+
+    # 1차 분할: 헤더 정보 기준으로 분할하고, 헤더 정보를 메타데이터로 저장
+    md_header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on,)
+    md_header_splits = md_header_splitter.split_text(content)
+
+    # 2차 분할: 글자 수 기준으로 세부 청킹
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800, chunk_overlap=150,
+        separators=["\n제","\n\n", "\n", " ", ""])
+    
+    # 헤더로 나뉜 문서(1차 분할)를 글자 수 기준으로 최종 분할 (2차 분할)
+    final_splits = text_splitter.split_documents(md_header_splits)
+    return final_splits
+
 
 
 
@@ -41,17 +68,17 @@ def build_vectorstore(batch_size: int = 30):
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
 
     total_indexed = 0
-    pdfs = list(Path(DOCS_DIR).glob("*.pdf"))
+    data = list(Path(DOCS_DIR).glob("*.md"))
     ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리 - 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로 (gemini한테 물어봐야하나...)
     ####### 이건 지금 고민할 단계는 아닌거같다....
 
-    if not pdfs:
-        print("No PDF files found in:", DOCS_DIR)
+    if not data:
+        print("No Markdown files found in:", DOCS_DIR)
         return
     
-    for p in pdfs:
+    for p in data:
         print("Processing:", p)
-        docs = load_and_split(p)
+        docs = load_and_split_md(p)
         for i in range(0, len(docs), batch_size):
             batch = docs[i : i + batch_size]
             if not batch:
@@ -93,10 +120,10 @@ def check_vectorstore_contents() -> None:       # 벡터 저장소에 저장된 
     
     print("\n=== Vectorstore Contents ===")
     print(f"Total embedded chunks: {len(all_docs['documents'])}")
-    print("\nEmbedded PDF files:")
+    print("\nEmbedded Markdown files:")
     for source, count in sources.items():
-        pdf_name = Path(source).name
-        print(f"  - {pdf_name}: {count} chunks")
+        data_name = Path(source).name
+        print(f"  - {data_name}: {count} chunks")
     print()
 
 

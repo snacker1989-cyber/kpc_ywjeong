@@ -66,6 +66,7 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
+        
 # --- 메인 화면 구성 ---
 st.title("🏢 한국생산성본부 내부규정 도우미")
 st.caption("한국생산성본부 임직원을 위한 규정 안내 챗봇입니다.")
