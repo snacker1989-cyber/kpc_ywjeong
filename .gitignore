@@ -21,4 +21,5 @@ __pycache__/
 # ========================
 data/
 pdfs/
+vectorstore/
 *.sqlite3

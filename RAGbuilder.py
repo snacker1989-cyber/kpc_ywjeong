@@ -17,7 +17,20 @@ def load_and_split(pdf_path):
     # "제d조(" 등 조항의 시작 부분을 정규식을 패턴으로 만들어 구분자로 추가 고려 (법률/조항 특화된 splitter가 있나)
     # 아스키 코드로도 들어갈 수 있나? 확인 필요
     # 도클링? pdf를 md로 변환하는 녀석 - md or json 등 여러가지 검토 - 너무 성능이 안좋을때만 고려해봐라
+    # 아예 로더 자체를 docling으로 바꿔보고, 정 안되면 노가다...
     return splitter.split_documents(docs)
+
+
+
+###### 1순위: load_and_split()을 개선해서 pdf 문서를 잘 불러오도록 수정
+###### 2순위: pdf -> md 변환해서 청킹 품질 개선
+###### 3순위(+@): 표준화된 질문과 답변으로 성능개선 정도 확인 (기준점 질문-답변 세트)
+######### 이러이러한 내용이 어느 규정 어디에 있는지 -> 조금 더 열려있는 질문 -> 오탈자 섞여도 잘 답변하는지
+###### vscode 내에서 기존 pdf 문서를 markdown 형태로 변환하는 작업 시도
+###### 자동으로 바꿔주는 툴이 있나? 그것도 한 번 검색해보자
+
+###### metadata로 grade를 만들어서 넣어주는 방법이 있다.
+
 
 def get_embeddings():
     emb = OllamaEmbeddings(model="embeddinggemma")
@@ -29,8 +42,7 @@ def build_vectorstore(batch_size: int = 30):
 
     total_indexed = 0
     pdfs = list(Path(DOCS_DIR).glob("*.pdf"))
-    ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리
-    ####### 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로 (gemini한테 물어봐야하나...)
+    ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리 - 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로 (gemini한테 물어봐야하나...)
     ####### 이건 지금 고민할 단계는 아닌거같다....
 
     if not pdfs:
