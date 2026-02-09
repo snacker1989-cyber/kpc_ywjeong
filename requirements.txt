@@ -5,3 +5,5 @@ langchain-ollama
 langchain-chroma
 pymupdf
 streamlit
+
+pymupdf4llm
