@@ -12,12 +12,15 @@ VSTORE_DIR = "vectorstore"
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=100,
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100,
                                                separators=["\n\n", "\n", " ", ""])
+    # "제d조(" 등 조항의 시작 부분을 정규식을 패턴으로 만들어 구분자로 추가 고려 (법률/조항 특화된 splitter가 있나)
+    # 아스키 코드로도 들어갈 수 있나? 확인 필요
+    # 도클링? pdf를 md로 변환하는 녀석 - md or json 등 여러가지 검토 - 너무 성능이 안좋을때만 고려해봐라
     return splitter.split_documents(docs)
 
 def get_embeddings():
-    emb = OllamaEmbeddings(model="embeddinggemma")   # vs. "qwen3-embedding"
+    emb = OllamaEmbeddings(model="embeddinggemma")
     return emb
 
 def build_vectorstore(batch_size: int = 30):
@@ -28,6 +31,7 @@ def build_vectorstore(batch_size: int = 30):
     pdfs = list(Path(DOCS_DIR).glob("*.pdf"))
     ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리
     ####### 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로 (gemini한테 물어봐야하나...)
+    ####### 이건 지금 고민할 단계는 아닌거같다....
 
     if not pdfs:
         print("No PDF files found in:", DOCS_DIR)
@@ -60,6 +64,7 @@ def check_vectorstore_contents() -> None:       # 벡터 저장소에 저장된 
     
     # 벡터 저장소에 저장된 문서의 수 확인
     all_docs = db.get()
+    ###### get_retriever()에서 metadata를 따로 불러와서 체크 한 번 해보기
     
     if not all_docs or not all_docs['documents']:
         print("Vectorstore is empty.")

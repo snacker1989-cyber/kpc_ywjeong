@@ -23,7 +23,7 @@ def get_qa_chain():
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})   # vs. search_type="mmr"
     
     # 스트리밍 지원을 위해 llm 설정
-    llm = ChatOllama(model="gemma3", temperature=0.2, num_predict=256)      # vs. llama3.1
+    llm = ChatOllama(model="gemma3", temperature=0.2)      # vs. llama3.1 - 자원이 여유가 될 때
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "당신은 한국생산성본부의 사규, 규정, 규칙, 가이드라인 등 내부 지침을 숙지한 AI 어시스턴트입니다. "
@@ -40,7 +40,7 @@ def get_qa_chain():
     )
     return chain
 
-# --- 사이드바 구성 ---
+# --- 사이드바 구성 --- #### 테스트 할 때는 죽여놓자... 무겁다
 with st.sidebar:
     st.title("📂 문서 관리 현황")
     st.info("현재 벡터 저장소에 저장된 정보입니다.")
