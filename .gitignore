@@ -5,6 +5,8 @@
 .venv312/
 .venv/
 del/
+.chainlit/
+.files/
 
 # ========================
 # Python cache files

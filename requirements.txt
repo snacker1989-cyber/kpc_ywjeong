@@ -5,3 +5,4 @@ langchain-ollama
 langchain-chroma
 
 streamlit
+chainlit
