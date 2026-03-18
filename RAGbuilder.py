@@ -8,6 +8,7 @@ from langchain_chroma import Chroma
 
 DOCS_DIR = "data"
 VSTORE_DIR = "vectorstore"
+EMBEDDINGMODEL = "qwen3-embedding"      # qwen3-embedding vs embeddinggemma
 
 
 def load_and_split(pdf_path):
@@ -60,7 +61,7 @@ def load_and_split_md(file_path):
 
 
 def get_embeddings():
-    emb = OllamaEmbeddings(model="embeddinggemma")
+    emb = OllamaEmbeddings(model=EMBEDDINGMODEL)
     return emb
 
 def build_vectorstore(batch_size: int = 30):
