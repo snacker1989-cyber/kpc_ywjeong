@@ -6,29 +6,26 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHea
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 
+
 DOCS_DIR = "data"
 VSTORE_DIR = "vectorstore"
-EMBEDDINGMODEL = "qwen3-embedding"      # qwen3-embedding vs embeddinggemma
+EMBEDDINGMODEL = "qwen3-embedding:4b"      # qwen3-embedding:4b vs embeddinggemma
 
 
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100,
-                                               separators=["\n\n", "\n", " ", ""])
-    # "제d조(" 등 조항의 시작 부분을 정규식을 패턴으로 만들어 구분자로 추가 고려 (법률/조항 특화된 splitter가 있나)
-    # 아스키 코드로도 들어갈 수 있나? 확인 필요
+    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100, is_separator_regex=True,
+                                               separators=[r"\n\n", r"(?=제\d+조\()", r"\n", r"\.", r"\s+", ""])
     return splitter.split_documents(docs)
 
-# loader를 PyMuPDFLoader에서 docling으로 바꾸니 HTTPSConnectionPool 에러가 발생함 - 내부망이라 생기는 문제라고 함
-# Gemini는 TextLoader로 불러와서 MarkdownHeaderTextSplitter로 청킹하는 방식을 추천함
 
 def load_and_split_md(file_path):
     loader = TextLoader(file_path, encoding='utf-8')
     data = loader.load()
-    content = data[0].page_content      # Markdown 파일의 내용을 text 그대로 추출
+    content = data[0].page_content
 
-    headers_to_split_on = [         # Markdown Header 기준으로 청킹
+    headers_to_split_on = [
         ("#", "Header 1"),
         ("##", "Header 2"),
         ("###", "Header 3"),
@@ -46,18 +43,6 @@ def load_and_split_md(file_path):
     # 헤더로 나뉜 문서(1차 분할)를 글자 수 기준으로 최종 분할 (2차 분할)
     final_splits = text_splitter.split_documents(md_header_splits)
     return final_splits
-
-
-
-
-###### 1순위: load_and_split()을 개선해서 pdf 문서를 잘 불러오도록 수정
-###### 2순위: pdf -> md 변환해서 청킹 품질 개선
-###### 3순위(+@): 표준화된 질문과 답변으로 성능개선 정도 확인 (기준점 질문-답변 세트)
-######### 이러이러한 내용이 어느 규정 어디에 있는지 -> 조금 더 열려있는 질문 -> 오탈자 섞여도 잘 답변하는지
-###### vscode 내에서 기존 pdf 문서를 markdown 형태로 변환하는 작업 시도
-###### 자동으로 바꿔주는 툴이 있나? 그것도 한 번 검색해보자
-
-###### metadata로 grade를 만들어서 넣어주는 방법이 있다.
 
 
 def get_embeddings():
@@ -87,6 +72,7 @@ def build_vectorstore(batch_size: int = 30):
             db.add_documents(batch)
             total_indexed += len(batch)
             print(f"  Indexed {total_indexed} documents so far")
+            
             # free memory immediately after persisting
             del batch
             import gc
@@ -98,7 +84,7 @@ def build_vectorstore(batch_size: int = 30):
     print("Vectorstore built and persisted at:", VSTORE_DIR)
 
 
-def check_vectorstore_contents() -> None:       # 벡터 저장소에 저장된 PDF 파일 목록과 청크 수 확인
+def check_vectorstore_contents() -> None:       # 벡터 저장소에 저장된 Markdown 파일 목록과 청크 수 확인
     embeddings = get_embeddings()
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
     

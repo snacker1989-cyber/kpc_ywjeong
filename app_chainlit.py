@@ -8,7 +8,7 @@ from langchain_ollama import ChatOllama
 from langchain_chroma import Chroma
 from RAGbuilder import get_embeddings, VSTORE_DIR
 
-LANGUAGEMODEL = "gemma3"        # qwen3.5 vs gemma3
+LANGUAGEMODEL = "gemma3"        # qwen3.5:4b? 2b? vs gemma3
 
 # --- 리소스 초기화 함수 ---
 def get_retriever():
