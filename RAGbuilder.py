@@ -37,8 +37,8 @@ def load_and_split_md(file_path):
 
     # 2차 분할: 글자 수 기준으로 세부 청킹
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800, chunk_overlap=150,
-        separators=["\n제","\n\n", "\n", " ", ""])
+        chunk_size=800, chunk_overlap=150, is_separator_regex=True,
+        separators=[r"\n\n", r"(?=제\d+조\()", r"\n", r"\.", r"\s+", ""])
     
     # 헤더로 나뉜 문서(1차 분할)를 글자 수 기준으로 최종 분할 (2차 분할)
     final_splits = text_splitter.split_documents(md_header_splits)
