@@ -56,8 +56,8 @@ def get_embeddings():
                 "CACHE_DIR": "./ov_cache",
                 },
             "fix_mistral_regex": True,
-            }
-        )
+        }
+    )
     return emb
 
 def build_vectorstore(batch_size: int = 4):

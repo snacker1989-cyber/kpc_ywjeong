@@ -4,11 +4,11 @@ from pathlib import Path
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFacePipeline
 from langchain_chroma import Chroma
 from RAGbuilder import get_embeddings, VSTORE_DIR
 
-LANGUAGEMODEL = "gemma3"        # qwen3.5:4b? 2b? vs gemma3
+LLM_PATH = "./models/gemma-3-12b-it-int4-ov"
 
 # --- 리소스 초기화 함수 ---
 def get_retriever():
@@ -20,7 +20,23 @@ def create_qa_chain():
     db = get_retriever()
     retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
     
-    llm = ChatOllama(model=LANGUAGEMODEL, temperature=0.2)
+    llm = HuggingFacePipeline.from_model_id(
+        model_id=LLM_PATH,
+        task="text-generation",
+        backend="openvino",
+        model_kwargs={
+            "device": "GPU",
+            "ov_config": {
+                "CACHE_DIR": "./ov_cache",
+            }
+        },
+        pipeline_kwargs={
+            "temperature": 0.2,
+            "max_new_tokens": 1024,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+    )
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "# 역할 및 목표 "

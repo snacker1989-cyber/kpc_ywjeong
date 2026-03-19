@@ -2,7 +2,8 @@
 langchain
 langchain-core
 langchain-community
-langchain-ollama
+langchain-text-splitters
+langchain-huggingface
 langchain-chroma
 
 # 챗봇 서비스 구현
