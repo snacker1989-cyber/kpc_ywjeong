@@ -1,29 +1,42 @@
-import streamlit as st
+import chainlit as cl
 
 from pathlib import Path
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_ollama import ChatOllama
+from langchain_huggingface import HuggingFacePipeline
 from langchain_chroma import Chroma
 from RAGbuilder import get_embeddings, VSTORE_DIR
 
-st.set_page_config(page_title="한국생산성본부 내부규정 도우미", page_icon="🏢", layout="wide")
+LLM_PATH = "./models/gemma-3-12b-it-int4-ov"
 
-# --- 캐시를 이용한 리소스 초기화 ---
-@st.cache_resource
+# --- 리소스 초기화 함수 ---
 def get_retriever():
     embeddings = get_embeddings()
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
     return db
 
-@st.cache_resource
-def get_qa_chain():
+def create_qa_chain():
     db = get_retriever()
-    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})   # vs. search_type="mmr"
+    retriever = db.as_retriever(search_type="similarity", search_kwargs={"k": 3})
     
-    # 스트리밍 지원을 위해 llm 설정
-    llm = ChatOllama(model="gemma3", temperature=0.2)      # vs. llama3.1 - 자원이 여유가 될 때
+    llm = HuggingFacePipeline.from_model_id(
+        model_id=LLM_PATH,
+        task="text-generation",
+        backend="openvino",
+        model_kwargs={
+            "device": "GPU",
+            "ov_config": {
+                "CACHE_DIR": "./ov_cache",
+            }
+        },
+        pipeline_kwargs={
+            "temperature": 0.2,
+            "max_new_tokens": 1024,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+    )
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", "# 역할 및 목표 "
@@ -37,6 +50,7 @@ def get_qa_chain():
         ("human", "{question}")
     ])
     
+    # Chain 생성
     chain = (
         {"context": retriever, "question": RunnablePassthrough()}
         | prompt
@@ -45,11 +59,13 @@ def get_qa_chain():
     )
     return chain
 
-# --- 사이드바 구성 --- #### 테스트 할 때는 죽여놓자... 무겁다
-with st.sidebar:
-    st.title("📂 문서 관리 현황")
-    st.info("현재 벡터 저장소에 저장된 정보입니다.")
+# --- Chainlit 이벤트 핸들러 ---
+
+@cl.on_chat_start
+async def start():
+    """채팅 세션이 시작될 때 실행되는 함수"""
     
+    # 1. 사이드바에 현재 학습된 문서 정보 표시 (선택 사항)
     db = get_retriever()
     all_docs = db.get()
     
@@ -59,47 +75,36 @@ with st.sidebar:
             source = Path(m.get('source', 'Unknown')).name
             sources[source] = sources.get(source, 0) + 1
         
-        st.metric("총 청크(Chunk) 수", f"{len(all_docs['documents'])} 개")
+        status_msg = f"현재 {len(all_docs['documents'])}개의 규정 조각이 학습되어 있습니다.\n\n"
+        status_msg += "\n".join([f"- {name} ({count} chunks)" for name, count in sources.items()])
         
-        st.markdown("### 📄 학습된 파일 목록")
-        for name, count in sources.items():
-            st.write(f"- {name} ({count} chunks)")
+        # 안내 메시지 전송
+        await cl.Message(content=f"🏢 **한국생산성본부 내부규정 도우미**가 준비되었습니다.\n\n{status_msg}").send()
     else:
-        st.warning("저장된 문서가 없습니다. 'build'를 먼저 실행해주세요.")
+        await cl.Message(content="⚠️ 학습된 문서가 없습니다. 벡터DB를 먼저 확인해주세요.").send()
 
-    if st.button("대화 기록 초기화"):
-        st.session_state.messages = []
-        st.rerun()
+    # 2. QA Chain을 세션에 저장 (사용자별로 독립적인 체인 유지)
+    chain = create_qa_chain()
+    cl.user_session.set("qa_chain", chain)
 
-        
-# --- 메인 화면 구성 ---
-st.title("🏢 한국생산성본부 내부규정 도우미")
-st.caption("한국생산성본부 임직원을 위한 규정 안내 챗봇입니다.")
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-# 대화 기록 렌더링
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# 질문 입력 및 처리
-if prompt := st.chat_input("내부규정에 대하여 궁금하신 내용을 입력하세요 (예: 쓸 수 있는 휴가들의 종류를 알려줘)"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        container = st.empty() # 스트리밍 출력을 위한 빈 공간
-        full_response = ""
-        
-        with st.spinner("이런저런 규정들을 살펴보는 중..."):
-            qa_chain = get_qa_chain()
-            # stream 메소드를 사용하여 한 글자씩 출력
-            for chunk in qa_chain.stream(prompt):
-                full_response += chunk
-                container.markdown(full_response + "▌")
-            container.markdown(full_response)
-            
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+@cl.on_message
+async def main(message: cl.Message):
+    """사용자가 메시지를 보낼 때마다 실행되는 함수"""
+    
+    # 세션에서 체인 가져오기
+    chain = cl.user_session.get("qa_chain")
+    
+    # 답변을 위한 빈 메시지 생성 (스트리밍용)
+    msg = cl.Message(content="")
+    
+    # LangChain의 stream 기능을 활용하여 실시간 답변 출력
+    # Chainlit의 'astream' 혹은 'stream'을 통해 토큰 단위로 전송합니다.
+    async for chunk in chain.astream(
+        message.content,
+        config=cl.ChatSettings.load().to_dict() # 필요한 경우 설정 로드
+    ):
+        await msg.stream_token(chunk)
+    
+    # 최종 메시지 전송
+    await msg.send()
