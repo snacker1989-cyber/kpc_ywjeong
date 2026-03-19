@@ -2,20 +2,19 @@ import sys
 
 from pathlib import Path
 from langchain_community.document_loaders import PyMuPDFLoader, TextLoader
+from langchain_community.embeddings import OpenVINOEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter, MarkdownHeaderTextSplitter
-from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
-
 
 DOCS_DIR = "data"
 VSTORE_DIR = "vectorstore"
-EMBEDDINGMODEL = "qwen3-embedding:4b"      # qwen3-embedding:4b vs embeddinggemma
+EMBEDDINGMODEL_PATH = "./models/Qwen3-Embedding-4B-OV"
 
 
 def load_and_split(pdf_path):
     loader = PyMuPDFLoader(pdf_path)
     docs = loader.load()
-    splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=100, is_separator_regex=True,
+    splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=150, is_separator_regex=True,
                                                separators=[r"\n\n", r"(?=제\d+조\()", r"\n", r"\.", r"\s+", ""])
     return splitter.split_documents(docs)
 
@@ -26,14 +25,16 @@ def load_and_split_md(file_path):
     content = data[0].page_content
 
     headers_to_split_on = [
-        ("#", "Header 1"),
-        ("##", "Header 2"),
-        ("###", "Header 3"),
+        ("#", "Header 1"), ("##", "Header 2"), ("###", "Header 3"),
     ]
 
     # 1차 분할: 헤더 정보 기준으로 분할하고, 헤더 정보를 메타데이터로 저장
     md_header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on,)
     md_header_splits = md_header_splitter.split_text(content)
+
+    # 각 청크에 source 파일 경로를 메타데이터로 주입
+    for split in md_header_splits:
+        split.metadata["source"] = str(file_path)
 
     # 2차 분할: 글자 수 기준으로 세부 청킹
     text_splitter = RecursiveCharacterTextSplitter(
@@ -46,39 +47,51 @@ def load_and_split_md(file_path):
 
 
 def get_embeddings():
-    emb = OllamaEmbeddings(model=EMBEDDINGMODEL)
+    emb = OpenVINOEmbeddings(
+        model_name_or_path=EMBEDDINGMODEL_PATH,
+        model_kwargs={
+            "device": "GPU",
+            "compile": True,
+            "ov_config": {
+                "CACHE_DIR": "./ov_cache",
+                },
+            "fix_mistral_regex": True,
+            }
+        )
     return emb
 
-def build_vectorstore(batch_size: int = 30):
+def build_vectorstore(batch_size: int = 4):
     embeddings = get_embeddings()
     db = Chroma(persist_directory=VSTORE_DIR, embedding_function=embeddings)
 
     total_indexed = 0
-    data = list(Path(DOCS_DIR).glob("*.md"))
-    ####### *.pdf인지 *.xlsx/*xls인지 체크하고, 로더 분기 처리 - 파일의 확장자에 따라 로더를 교체해서 쓰는 방식으로 (gemini한테 물어봐야하나...)
-    ####### 이건 지금 고민할 단계는 아닌거같다....
+    data_files = [p for p in Path(DOCS_DIR).iterdir() if p.suffix.lower() in [".md", ".pdf"]]
 
-    if not data:
-        print("No Markdown files found in:", DOCS_DIR)
+    if not data_files:
+        print(f"No supported files (.md, .pdf) found in: {DOCS_DIR}")
         return
     
-    for p in data:
-        print("Processing:", p)
-        docs = load_and_split_md(p)
+    for p in data_files:
+        print(f"Processing: {p.name}")
+        ext = p.suffix.lower()
+
+        if ext == ".pdf":
+            docs = load_and_split(p)
+        elif ext == ".md":
+            docs = load_and_split_md(p)
+        
+        import gc
+
         for i in range(0, len(docs), batch_size):
             batch = docs[i : i + batch_size]
-            if not batch:
-                continue
             db.add_documents(batch)
             total_indexed += len(batch)
-            print(f"  Indexed {total_indexed} documents so far")
+            print(f"  Indexed {total_indexed} chunks...")
             
-            # free memory immediately after persisting
             del batch
-            import gc
             gc.collect()
+        
         del docs
-        import gc
         gc.collect()
     
     print("Vectorstore built and persisted at:", VSTORE_DIR)

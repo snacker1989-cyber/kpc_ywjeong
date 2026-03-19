@@ -4,15 +4,18 @@
 .env
 .venv312/
 .venv/
-del/
 .chainlit/
 .files/
+models/
+del/
+del_pdffile/
 
 # ========================
 # Python cache files
 # ========================
 __pycache__/
 *.pyc
+ov_cache/
 
 # ========================
 # IDE Files
@@ -23,6 +26,4 @@ __pycache__/
 # Data Files
 # ========================
 data/
-pdfs/
 vectorstore/
-*.sqlite3
